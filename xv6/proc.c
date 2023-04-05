@@ -111,6 +111,9 @@ found:
   p->context = (struct context*)sp;
   memset(p->context, 0, sizeof *p->context);
   p->context->eip = (uint)forkret;
+  p->arrival_time = ticks;
+  p->elapsed_time = 0;
+  p->sched_policy = -1;
 
   return p;
 }
@@ -319,6 +322,25 @@ wait(void)
 //  - swtch to start running that process
 //  - eventually that process transfers control
 //      via swtch back to the scheduler.
+
+int 
+policy_scheduler(void)
+{
+  struct proc *p;
+  int check_policy = -1;
+  acquire(&ptable.lock);
+  for(p = ptable.proc; p<&ptable.proc[NPROC]; p++){
+    if(p->state == RUNNABLE){
+      check_policy = p->sched_policy;
+      release(&ptable.lock);
+      break;
+    }
+  }
+  release(&ptable.lock);
+  return check_policy;
+}
+
+
 void
 scheduler(void)
 {
@@ -329,29 +351,61 @@ scheduler(void)
   for(;;){
     // Enable interrupts on this processor.
     sti();
+    int check_policy = policy_scheduler();
+    if(check_policy == -1){
+      // Loop over process table looking for process to run.
+      acquire(&ptable.lock);
+      for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+        if(p->state != RUNNABLE)
+          continue;
 
-    // Loop over process table looking for process to run.
-    acquire(&ptable.lock);
-    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-      if(p->state != RUNNABLE)
-        continue;
+        // Switch to chosen process.  It is the process's job
+        // to release ptable.lock and then reacquire it
+        // before jumping back to us.
+        c->proc = p;
+        switchuvm(p);
+        p->state = RUNNING;
 
-      // Switch to chosen process.  It is the process's job
-      // to release ptable.lock and then reacquire it
-      // before jumping back to us.
-      c->proc = p;
-      switchuvm(p);
-      p->state = RUNNING;
+        swtch(&(c->scheduler), p->context);
+        switchkvm();
 
-      swtch(&(c->scheduler), p->context);
-      switchkvm();
-
-      // Process is done running for now.
-      // It should have changed its p->state before coming back.
-      c->proc = 0;
+        // Process is done running for now.
+        // It should have changed its p->state before coming back.
+        c->proc = 0;
+      }
+      release(&ptable.lock);
     }
-    release(&ptable.lock);
+    else if(check_policy == 0){
+      //EDF 
+      acquire(&ptable.lock);
+      struct proc *edf_proc = 0;
+      for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+        if(p->state != RUNNABLE)
+          continue;
+        if(edf_proc == 0){
+          edf_proc = p;
+        }
+        else{
+          if(p->deadline < edf_proc->deadline){
+            edf_proc = p;
+          }
+        }
+      }
+      if(edf_proc != 0){
+        p = edf_proc;
+        c->proc = p;
+        switchuvm(p);
+        p->state = RUNNING;
 
+        swtch(&(c->scheduler), p->context);
+        switchkvm();
+
+        // Process is done running for now.
+        // It should have changed its p->state before coming back.
+        c->proc = 0;
+      }
+      release(&ptable.lock);
+    }
   }
 }
 
@@ -531,4 +585,140 @@ procdump(void)
     }
     cprintf("\n");
   }
+}
+
+int 
+set_exec_time(int pid, int exec_time)
+{
+  struct proc *p;
+
+  acquire(&ptable.lock);
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    if(p->pid == pid){
+      p->exec_time = exec_time;
+      release(&ptable.lock);
+      return 0;
+    }
+  }
+  release(&ptable.lock);
+  return -22;
+}
+
+int 
+set_deadline(int pid, int deadline)
+{
+  struct proc *p;
+
+  acquire(&ptable.lock);
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    if(p->pid == pid){
+      p->deadline = p->arrival_time + deadline;
+      release(&ptable.lock);
+      return 0;
+    }
+  }
+  release(&ptable.lock);
+  return -22;
+}
+
+int 
+gcd(int a, int b) 
+{
+    if (b == 0)
+        return a;
+    return gcd(b, a % b);
+}
+
+int
+lcm(int a, int b)
+{
+  return (a*b)/gcd(a,b);
+}
+
+int 
+calc_lcm(int periods[], int n)
+{
+  int i;
+  int res = periods[0];
+  for(i = 1; i < n; i++)
+    res = lcm(res, periods[i]);
+  return res;
+}
+
+int
+schedulability_test(int sched_policy, int periods[])
+{
+  int n = NPROC;
+  // calculate the lcm of the periods
+  int LCM = calc_lcm(periods, n);  
+
+  struct proc *p;
+  int sum = 0;
+  if(sched_policy == 0){
+    acquire(&ptable.lock);
+    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+      if(p->state == RUNNABLE || p->state == RUNNING){
+        sum += p->exec_time*LCM/p->deadline;
+      }
+    }
+    release(&ptable.lock);
+    if (sum > 0){
+      return -22;
+    }
+    else{
+      return 0;
+    }
+  }
+  else{
+    acquire(&ptable.lock);
+    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+      if(p->state == RUNNABLE || p->state == RUNNING){
+        sum += p->exec_time*LCM/p->period;
+      }
+    }
+    release(&ptable.lock);
+    if (sum > 1){
+      return -22;
+    }
+    else{
+      return 0;
+    }
+  }
+}
+
+int 
+set_sched_policy(int pid, int sched_policy)
+{
+  struct proc *p;
+  int periods[NPROC];
+  int i = 0;
+
+  if(sched_policy != 0 && sched_policy != 1)
+    return -22;
+  
+  acquire(&ptable.lock);
+
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    if(sched_policy == 0){
+      // append the deadline to the periods array
+      periods[i] = p->deadline;
+    }
+    else{
+      // append the period to the periods array
+      periods[i] = p->period;
+    }
+    i++;
+    if(p->pid == pid){
+      p->sched_policy = sched_policy;
+      release(&ptable.lock);
+      if(schedulability_test(sched_policy, periods) == 0){
+        return 0;
+      }
+      else{
+        return -22;
+      }
+    }
+  }
+  release(&ptable.lock);
+  return -22;
 }
