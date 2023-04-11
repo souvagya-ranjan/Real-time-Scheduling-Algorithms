@@ -51,10 +51,12 @@ struct proc {
   char name[16];               // Process name (debugging)
   int exec_time;               // Execution time
   int deadline;                // Deadline
-  int period;                  // Period
   int elapsed_time;            // Elapsed time
   int arrival_time;            // Arrival time
-  int sched_policy;         // Schedule policy
+  int sched_policy;           // Schedule policy
+  int rate;                   // Rate
+  int period;                 // Period
+  int weight;                 // Weight
 };
 
 // Process memory is laid out contiguously, low addresses first:
@@ -63,6 +65,9 @@ struct proc {
 //   fixed-size stack
 //   expandable heap
 
+
 int set_exec_time(int pid, int exec_time);
 int set_deadline(int pid, int deadline);
 int set_sched_policy(int pid, int sched_policy);
+void increase_elapsed_time(void);
+int set_rate(int pid, int rate);

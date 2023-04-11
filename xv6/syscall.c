@@ -106,6 +106,7 @@ extern int sys_uptime(void);
 extern int sys_exec_time(void);
 extern int sys_deadline(void);
 extern int sys_sched_policy(void);
+extern int sys_rate(void);
 
 static int (*syscalls[])(void) = {
 [SYS_fork]    sys_fork,
@@ -132,6 +133,7 @@ static int (*syscalls[])(void) = {
 [SYS_exec_time] sys_exec_time,
 [SYS_deadline] sys_deadline,
 [SYS_sched_policy] sys_sched_policy,
+[SYS_rate] sys_rate,
 };
 
 void
@@ -143,6 +145,7 @@ syscall(void)
   num = curproc->tf->eax;
   if(num > 0 && num < NELEM(syscalls) && syscalls[num]) {
     curproc->tf->eax = syscalls[num]();
+    // cprintf("syscall %d called for process %d\n", num, curproc->pid);
   } else {
     cprintf("%d %s: unknown sys call %d\n",
             curproc->pid, curproc->name, num);

@@ -96,9 +96,9 @@ sys_exec_time(void)
   int pid;
   int time;
   if(argint(0, &pid) < 0)
-    return -1;
+    return -22;
   if(argint(1, &time) < 0)
-    return -1;
+    return -22;
   return set_exec_time(pid, time);
 }
 
@@ -108,9 +108,9 @@ sys_deadline(void)
   int pid;
   int deadline;
   if(argint(0, &pid) < 0)
-    return -1;
+    return -22;
   if(argint(1, &deadline) < 0)
-    return -1;
+    return -22;
   return set_deadline(pid, deadline);
 }
 
@@ -119,9 +119,24 @@ sys_sched_policy(void)
 {
   int pid;
   int policy;
-  if(argint(0, &pid) < 0)
-    return -1;
-  if(argint(0, &policy) < 0)
-    return -1;
+  argint(0, &pid);
+  argint(1, &policy);
+  if(pid < 0)
+    return -22;
+  if( policy < 0 && policy >=2) 
+    return -22;
   return set_sched_policy(pid, policy);
+}
+
+int 
+sys_rate(void)
+{
+  int pid, rate;
+  argint(0, &pid);
+  argint(1, &rate);
+  if(pid < 0)
+    return -22;
+  if(rate < 1 && rate >30)
+    return -22;
+  return set_rate(pid, rate);
 }

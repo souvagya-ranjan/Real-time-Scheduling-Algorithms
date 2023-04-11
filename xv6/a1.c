@@ -1,6 +1,7 @@
 #include "types.h"
 #include "stat.h"
 #include "user.h"
+// #include "defs.h"
 
 // TC#1: EDF Schedulable test case
 int main(int argc, char *argv[])
@@ -25,6 +26,7 @@ int main(int argc, char *argv[])
             deadline(cid, deadline_value[i]);
             exec_time(cid, exectime[i]);
             sched_policy(cid, 0);
+            printf(1, "Parent: %d, Child: %d, Deadline: %d, Exec Time: %d, Sched Policy: %d has been created\n", parent_pid, cid, deadline_value[i], exectime[i], 0);
         }
         else
         {

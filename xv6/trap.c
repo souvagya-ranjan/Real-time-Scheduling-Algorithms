@@ -51,12 +51,10 @@ trap(struct trapframe *tf)
     if(cpuid() == 0){
       acquire(&tickslock);
       ticks++;
-      if(myproc() && (myproc()->state == RUNNING || myproc()->state == RUNNABLE)){
-        myproc()->elapsed_time++;
-
-      }
+      increase_elapsed_time();
       wakeup(&ticks);
       release(&tickslock);
+      
     }
     lapiceoi();
     break;
