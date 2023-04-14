@@ -1,0 +1,94 @@
+\documentclass{article}
+\usepackage[a4paper, total={6in, 8in}]{geometry}
+\usepackage{subcaption}
+\usepackage{graphicx} % Required for inserting images
+\usepackage{listings}
+\usepackage{float}
+\usepackage{xcolor}
+
+% Define colors for SQL code
+\definecolor{sqlbg}{RGB}{240,240,240}
+\definecolor{sqlkeyword}{RGB}{0,0,255}
+\definecolor{sqlstring}{RGB}{255,0,0}
+
+% Define SQL code style
+\lstdefinestyle{sql}{
+  backgroundcolor=\color{sqlbg},
+  basicstyle=\ttfamily\small,
+  breakatwhitespace=true,
+  breaklines=true,
+  captionpos=b,
+  commentstyle=\color{gray},
+  keywordstyle=\color{sqlkeyword},
+  language=SQL,
+  morekeywords={SELECT, FROM, WHERE, GROUP BY, HAVING, ORDER BY, JOIN, ON, INNER, OUTER, LEFT, RIGHT},
+  numbers=left,
+  numbersep=5pt,
+  numberstyle=\tiny\color{gray},
+  showspaces=false,
+  showstringspaces=false,
+  showtabs=false,
+  stringstyle=\color{sqlstring},
+  tabsize=2,
+}
+
+\begin{document}
+\begin{titlepage}
+    \begin{center}
+        \includegraphics[width=0.6\textwidth]{logo.jpg}~\\[1.6cm]
+    
+        \HRule \\[0.4cm]
+        { \LARGE 
+          \textbf{Assignment-2 report for \\ COL331(Operating Systems)}\\[0.4cm]
+          \emph{Scheduling Algorithms}\\[0.4cm]
+        }
+        \HRule \\[1.5cm]
+        
+        
+        { \large
+            \textbf{Prof. Smruti Ranjan Sarangi}\\ \\[0.1cm]
+            \vspace{20pt}
+            Souvagya Ranjan Sethi \\2019CS10405
+        }
+        
+        \vfill
+        
+        \textsc{\large Department of Computer Science \& Engineering}\\[0.4cm]
+        {\large \today}
+         
+    \end{center}
+\end{titlepage}
+\section{System Calls}
+\begin{enumerate}
+    \item \textbf{sys\_sched\_policy(int pid, int policy} \\
+    This code is an implementation of the set\_sched\_policy function in an operating system. The function takes two arguments, the pid of the process for which the scheduling policy is to be set and the sched\_policy to be set. The function then checks if the sched\_policy is a valid policy, which in this case is either 0 for EDF scheduling or 1 for Rate Monotonic scheduling.
+
+If the sched\_policy is valid, the function iterates over all the processes in the process table to calculate the appropriate value for each scheduling policy. For EDF scheduling, the function calculates the least common multiple (LCM) of all the periods of the processes and checks if the sum of the execution times of all the processes divided by their respective periods is less than or equal to the LCM. For Rate Monotonic scheduling, the function checks if the sum of the execution times of all the processes multiplied by their respective rates is less than or equal to 83.
+
+If the condition for the respective scheduling policy is met, the sched\_policy of the process is set and the function returns 0. If the condition is not met, the state of the process is set to UNUSED and the function returns -22.
+
+\item \textbf{sys\_rate(int pid, int rate)} \\ This function sets the rate and weight of a process identified by its PID. The weight is calculated based on the rate using a formula (3*(30-rate)/29.0) and is rounded up to the nearest integer. The weight and rate values are then assigned to the process. If the process with the given PID is not found in the process table, the function returns -22. Otherwise, it returns 0.
+\item \textbf{sys\_deadline(int pid, int deadline)}\\ This system call sets the deadline for each task. The deadline is set to be arrival time plus the mentioned deadline for that task.
+
+\item \textbf{sys\_exec\_time(int pid, int time)} \\This sets the execution time for a task.
+    
+\end{enumerate}
+\section{Scheduling Algorithms}
+\begin{enumerate}
+    \item \textbf{EDF} \\   EDF stands for Earliest Deadline First and it is a scheduling policy used in real-time systems. In EDF scheduling, tasks with the earliest deadline are executed first. The deadline is the point in time by which a task must complete execution.
+
+In EDF scheduling, the scheduler monitors the deadlines of each task and schedules the task with the earliest deadline to run next. This ensures that the tasks with the tightest deadlines are completed first. If a task misses its deadline, it is considered a scheduling failure and may result in system instability or loss of data.
+
+EDF is a popular scheduling policy in real-time systems because it can guarantee that all tasks meet their deadlines as long as the system load is within the capacity of the processor.
+\\ The scheduling algorithm is defined in the scheduler function in proc.c. 
+
+Also, at eachstep when a process is about to be scheduled, we check for the schedulabilityof the group of tasks as a lot.
+\item \textbf{RMS} \\  Rate-monotonic scheduling (RMS) is a preemptive scheduling algorithm used in real-time operating systems (RTOS) with a fixed-priority scheduling policy. RMS is based on assigning a priority to each process based on its period or its inverse, the rate.
+
+In RMS, a process with a shorter period has a higher priority than a process with a longer period. The idea behind this is that the shorter the period of a process, the more often it needs to execute, and therefore, it has a higher priority.
+
+The rate of a process is the inverse of its period. Thus, a process with a shorter period has a higher rate than a process with a longer period. In RMS, a process with a higher rate has a higher priority than a process with a lower rate.
+
+RMS ensures that all processes meet their deadlines by guaranteeing that a higher-priority process will preempt a lower-priority process if it becomes ready to execute. However, it assumes that all processes have a fixed execution time and that there are no aperiodic tasks.
+\end{enumerate}
+\end{document}
